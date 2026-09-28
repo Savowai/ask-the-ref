@@ -1,0 +1,142 @@
+# Current editions only. Hash changes require source review; downloads do not activate a corpus.
+schema_version: 1
+checked_on: 2026-09-28
+sources:
+- id: ifab
+  title: IFAB Laws of the Game
+  authority: IFAB
+  competition_scope:
+  - generic
+  edition: 2026/27
+  source_url: https://www.theifab.com/laws/latest/
+  discovery_url: https://theifab.com/documents/
+  download_url: https://downloads.theifab.com/downloads/laws-of-the-game-202627-single-pages?l=en
+  allowed_hosts:
+  - theifab.com
+  - www.theifab.com
+  - downloads.theifab.com
+  - static.theifab.com
+  effective_from: 2026-07-01
+  effective_until: null
+  verified_on: 2026-09-28
+  verification: current
+  ingest_phase: 2
+  coverage:
+  - laws-1-17
+  - var-protocol
+  - practical-guidelines
+  - glossary
+  - definitions
+  notes: Single-page English PDF. Competition adoption and optional protocols require
+    explicit evidence.
+  sha256: 89398520b353c6d995a1bb2557c97dc3c5aa1712c1d3009589f580a5a23c6a7d
+- id: fifa-rstp
+  title: FIFA Regulations on the Status and Transfer of Players
+  authority: FIFA
+  competition_scope:
+  - fifa
+  - player-status
+  - international-transfers
+  edition: July 2025 (including interim regulatory framework)
+  source_url: https://digitalhub.fifa.com/m/4139b312ba9cfb4f/original/Regulations-on-the-Status-and-Transfer-of-Players-July-2025-edition.pdf
+  discovery_url: https://support.fifatms.com/en/support/solutions/articles/7000031125-regulations
+  download_url: https://digitalhub.fifa.com/m/4139b312ba9cfb4f/original/Regulations-on-the-Status-and-Transfer-of-Players-July-2025-edition.pdf
+  allowed_hosts:
+  - digitalhub.fifa.com
+  - support.fifatms.com
+  - inside.fifa.com
+  effective_from: 2025-07-01
+  effective_until: 2027-01-01
+  verified_on: 2026-09-28
+  verification: current
+  ingest_phase: 5
+  coverage:
+  - player-status
+  - registration
+  - transfers
+  - release-of-players
+  - definitions
+  notes: FIFA TMS lists this as current; the replacement enters into force 2027-01-01.
+    Phase 5 must audit amendments/circulars and expired Annexe 7 provisions; exclude
+    futsal-specific annexes.
+  sha256: 3638f534058f1a86c53caf6364122e5e00c8aa0e3d30120a5cde987f6dfd35a0
+- id: uefa-ucl
+  title: Regulations of the UEFA Champions League
+  authority: UEFA
+  competition_scope:
+  - uefa-champions-league
+  edition: 2026/27
+  source_url: https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27-Online
+  discovery_url: https://www.uefa.com/uefachampionsleague/about/
+  download_url: https://documents.uefa.com/api/khub/maps/TgUbiDSFke4HkEO0YzKgMg/attachments/faSWbggDzv0NWMKcuScafQ-TgUbiDSFke4HkEO0YzKgMg/content
+  allowed_hosts:
+  - documents.uefa.com
+  - www.uefa.com
+  - editorial.uefa.com
+  effective_from: 2026-07-29
+  effective_until: null
+  verified_on: 2026-09-28
+  verification: current
+  ingest_phase: 5
+  coverage:
+  - registration
+  - suspensions
+  - extra-time
+  - penalties
+  - substitutions
+  notes: English 2026/27 edition; enforcement date verified on the official document
+    portal.
+  sha256: 8f046a661ed201906c94f1786bc3bb7f686c32ac39d1eaf13348bc4b0e65fb2d
+- id: uefa-uel
+  title: Regulations of the UEFA Europa League
+  authority: UEFA
+  competition_scope:
+  - uefa-europa-league
+  edition: 2026/27
+  source_url: https://documents.uefa.com/r/Regulations-of-the-UEFA-Europa-League-2026/27-Online
+  discovery_url: https://www.uefa.com/uefaeuropaleague/about/
+  download_url: https://documents.uefa.com/api/khub/maps/tSfZjys~PNk9QHPFdDo_Nw/attachments/kU3EGZjGrIPc79LGCl6LBA-tSfZjys~PNk9QHPFdDo_Nw/content
+  allowed_hosts:
+  - documents.uefa.com
+  - www.uefa.com
+  - editorial.uefa.com
+  effective_from: 2026-07-29
+  effective_until: null
+  verified_on: 2026-09-28
+  verification: current
+  ingest_phase: 5
+  coverage:
+  - registration
+  - suspensions
+  - extra-time
+  - penalties
+  - substitutions
+  notes: UEFA is an authority, not one competition. Keep UCL and UEL scopes separate.
+  sha256: db4bee887f44d16c1b0193b76c14848d0b52753f5dee44a7d9eb13d1e9cd8d7e
+- id: premier-league
+  title: Premier League Handbook
+  authority: PL
+  competition_scope:
+  - premier-league
+  edition: 2026/27
+  source_url: https://www.premierleague.com/en/news/62625
+  discovery_url: https://www.premierleague.com/en/news/62625
+  download_url: https://resources.premierleague.pulselive.com/premierleague/document/2026/07/31/8a890ff9-176c-4364-a8ff-e08f995e2c86/TM2040_PL-Handbook-and-Collateral-2026-27_Digital_31.07.pdf
+  allowed_hosts:
+  - www.premierleague.com
+  - resources.premierleague.pulselive.com
+  - resources.premierleague.com
+  effective_from: 2026-07-31
+  effective_until: null
+  verified_on: 2026-09-28
+  verification: current
+  ingest_phase: 5
+  coverage:
+  - match-day
+  - squad-size
+  - substitutes
+  - homegrown
+  notes: Published 31 July 2026 for the current season. The date is a conservative
+    availability bound, not a claim that every handbook provision commenced on that
+    date. Check provision-specific dates during ingestion.
+  sha256: 7a4ed7bd08bc08da53a9586e04ea2873c9548ec1179b1ca921ea9eecb3dc8613
