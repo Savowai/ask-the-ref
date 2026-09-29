@@ -1,5 +1,6 @@
 """Strict, data-driven source configuration. Never infer effective dates from titles."""
 
+import os
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -9,7 +10,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(os.environ.get("ASK_THE_REF_ROOT", Path(__file__).resolve().parents[3]))
 
 
 class Settings(BaseSettings):
@@ -20,10 +21,20 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     llm_model: str = ""
     embedding_model: str = ""
-    embedding_dimensions: Literal[1536] = 1536
+    embedding_dimensions: int = Field(default=384, ge=384, le=384)
     reranker_model: str = ""
     otel_exporter_otlp_endpoint: str = ""
     otel_service_name: str = "ask-the-ref"
+
+
+class Correction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    section_key: str
+    url: str
+    anchor: str = Field(pattern=r"^[a-z0-9-]+$")
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approved_on: date
+    notes: str
 
 
 class Source(BaseModel):
@@ -43,12 +54,13 @@ class Source(BaseModel):
     verification: Literal["current", "needs_review"]
     ingest_phase: int = Field(ge=2, le=5)
     coverage: list[str] = Field(min_length=1)
+    corrections: list[Correction] = Field(default_factory=list)
     notes: str = ""
     sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
     def validate_source(self):
-        for url in [self.source_url, self.discovery_url, self.download_url]:
+        for url in [self.source_url, self.discovery_url, self.download_url] + [c.url for c in self.corrections]:
             if url is not None:
                 parsed = urlparse(url)
                 if (

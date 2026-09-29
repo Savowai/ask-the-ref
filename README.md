@@ -1,12 +1,15 @@
 # Ask the Ref
 
 Public, evidence-first Q&A about the football rules in force today.
-**Status: Phase 1 scaffold. No answers, ingestion, retrieval, UI, or deployment yet.**
+**Status: Phase 2 complete: IFAB section parsing, local hybrid retrieval and extractive CLI.**
+Generated answers are Phase 3; API/UI and deployment are later phases.
+
+See [Phase 2 setup, source corrections and measured retrieval checks](docs/PHASE2.md).
 
 ## Local setup
 
-Requirements: Python 3.11+ (3.13 recommended), Docker Engine/Desktop with Compose v2,
-and Git. No API key is needed in Phase 1.
+Requirements: Python 3.12+ (3.13 tested), Docker Engine/Desktop with Compose v2,
+and Git. No API key is needed through Phase 2.
 
 ```sh
 make setup                         # creates .venv and .env if absent
@@ -47,7 +50,8 @@ data/raw/                    ignored PDFs and download receipts
 data/processed/              ignored derived content (Phase 2)
 data/postgres/               ignored local database (created by Docker)
 sources.yaml                 editions, applicability, official URLs, SHA-256
-requirements.lock            pinned Phase 1 Python dependencies
+requirements.lock            pinned Python dependencies
+models.lock.json             exact embedding/reranker revisions
 compose.yaml
 Dockerfile
 Makefile
@@ -62,7 +66,8 @@ interval, official/discovery URLs, hash, last check, ingestion status, embedding
 `chunks`: composite foreign key to the book's edition, stable section key and parent
 section key, full heading path, law/article, title, structured JSON blocks (paragraphs,
 numbered lists and tables), text, PDF page range and printed page labels, source and
-exact-section URLs, provision validity dates, English tsvector, vector(1536).
+exact-section URLs, provision validity dates, English tsvector, vector(384).
+Official HTML corrections have NULL PDF page fields.
 `current_chunks` joins authority/scope metadata and excludes non-ready, future and
 expired books/provisions. Retrieval must use this view.
 
@@ -71,11 +76,11 @@ Variation links require supporting evidence; this is storage, not implemented pr
 `query_runs`: trace/config/corpus/model identifiers, token counts, latency, step timings,
 refusal flag and cost. Unknown cost is NULL; no raw user questions are stored by default.
 
-Full-text GIN and cosine HNSW indexes are ready for Phase 2 hybrid retrieval.
-1536 dimensions are a schema contract, not a selected embedding model. Changing it
-requires a migration and re-embedding the complete corpus.
+Full-text GIN and cosine HNSW indexes support hybrid retrieval. Migration 002
+selects native 384-dimensional MiniLM embeddings. Changing model/dimensions requires
+a migration and re-embedding the complete corpus.
 
-Replacement contract for later ingestion: validate and embed the replacement first;
+Implemented replacement contract: validate and embed the replacement first;
 then in one transaction lock the rulebook, delete its chunks (links cascade), update
 its metadata and insert all new chunks. Mark ready only after validation. Roll back
 on any error. Never archive obsolete text or serve a partly replaced book. Old files
@@ -106,10 +111,9 @@ parser profiles and discovery resolvers will be added in their respective phases
 |---|---|---|
 | POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB / POSTGRES_PORT | Phase 1 | Local Compose database |
 | DATABASE_URL | Phase 2 onward | Backend connection; keep aligned with Postgres settings |
-| OPENAI_API_KEY | Phase 2/3 if using OpenAI | Server-only embedding/LLM credentials |
-| LLM_MODEL / EMBEDDING_MODEL | Phase 2/3 | Models selected after quality/cost checks |
-| EMBEDDING_DIMENSIONS | Phase 2 | Must be 1536 for the initial schema |
-| RERANKER_MODEL | Phase 2 | Local cross-encoder model id; no paid reranker key required |
+| OPENAI_API_KEY | Phase 3 if using OpenAI | Server-only answer-generation credentials |
+| LLM_MODEL | Phase 3 | Answer model selected during generation work |
+| EMBEDDING_DIMENSIONS | Phase 2 | 384 after migration 002; models pinned in models.lock.json |
 | OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_SERVICE_NAME | Phase 6 | Optional tracing exporter |
 | NEXT_PUBLIC_API_URL | Phase 6 | Public backend URL; never put secrets in NEXT_PUBLIC variables |
 
@@ -121,8 +125,10 @@ into chat or commit them. No external accounts or paid services were created.
 ## Validation and phase gates
 
 Phase 1: source/download unit tests, lint, live PDF download checks and SQL syntax
-validation. Docker is unavailable on the build machine, so the Compose image build,
-Postgres startup and SQL integration checks have **not** been run there. Run:
+validation. Docker Desktop is installed and the Postgres + pgvector container is
+healthy. `make db-check` and `make db-test` both passed, including edition consistency,
+future/expired rule filtering and cascade deletion. The optional tools image build
+has not been tested. To repeat the database checks, run:
 
 ```sh
 make db-up
@@ -135,4 +141,5 @@ CLI Q&A. Phase 3: cited answer generation, scenario format and refusals. Phase 4
 75+ golden questions, ablations, retrieval/answer/citation metrics, latency and cost.
 Phase 5: other rulebooks and precedence. Phase 6: API/UI/deployment and freshness.
 Phase 7: final architecture diagram, real eval table, demo GIF and CI smoke eval.
-No evaluation scores are claimed before the evaluation harness exists.
+The limited 12-question Phase 2 diagnostic is in docs/PHASE2.md; comprehensive
+answer/citation evaluation remains Phase 4.

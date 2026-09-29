@@ -3,7 +3,7 @@ VENV := .venv/bin
 .DEFAULT_GOAL := help
 .PHONY: help setup db-up db-down db-check sources download test lint
 help:
-	@echo "setup | db-up | db-down | db-check | db-test | sources | download [SOURCE=ifab] | test | lint"
+	@echo "setup | db-up | db-down | db-check | db-test | sources | download [SOURCE=ifab] | models | corrections | db-migrate | parse | ingest | ask | test | lint"
 setup:
 	$(PYTHON) -m venv .venv
 	$(VENV)/python -m pip install --no-cache-dir -r requirements.lock
@@ -27,3 +27,17 @@ lint:
 .PHONY: db-test
 db-test:
 	docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < scripts/check_db_behavior.sql
+
+.PHONY: models corrections parse db-migrate ingest ask
+models:
+	$(VENV)/python -m ask_the_ref.cli models
+corrections:
+	$(VENV)/python -m ask_the_ref.cli corrections
+parse:
+	$(VENV)/python -m ask_the_ref.cli parse
+db-migrate:
+	$(VENV)/python -m ask_the_ref.cli migrate
+ingest:
+	$(VENV)/python -m ask_the_ref.cli ingest
+ask:
+	$(VENV)/python -m ask_the_ref.cli ask "$$QUESTION"

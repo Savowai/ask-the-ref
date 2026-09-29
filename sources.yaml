@@ -30,6 +30,19 @@ sources:
   notes: Single-page English PDF. Competition adoption and optional protocols require
     explicit evidence.
   sha256: 89398520b353c6d995a1bb2557c97dc3c5aa1712c1d3009589f580a5a23c6a7d
+  corrections:
+  - section_key: law-3/1
+    url: https://www.theifab.com/laws/latest/the-players/
+    anchor: number-of-players
+    sha256: 481f2963da13725f7bfc18b332236d950dda712c94c746834daa748a543eb405
+    approved_on: '2026-04-28'
+    notes: April amendment missing from main PDF; replaces the whole section.
+  - section_key: law-7/5
+    url: https://www.theifab.com/laws/latest/the-duration-of-the-match/
+    anchor: abandoned-match
+    sha256: c45342ac22aa15d0dae138440a0deec467438c29d796516c78ff0ae42e880c5b
+    approved_on: '2026-04-28'
+    notes: April amendment missing from main PDF; replaces the whole section.
 - id: fifa-rstp
   title: FIFA Regulations on the Status and Transfer of Players
   authority: FIFA

@@ -6,16 +6,19 @@ build-backend = "setuptools.build_meta"
 name = "ask-the-ref"
 version = "0.1.0"
 description = "Current football rules with verifiable section citations"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "httpx>=0.28,<1", "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3",
   "PyYAML>=6,<7", "psycopg[binary]>=3.2,<4", "pypdf>=5,<7",
+  "pdfplumber>=0.11,<0.12", "sentence-transformers>=5,<6",
+  "pgvector>=0.4,<0.5", "numpy>=2,<3", "beautifulsoup4>=4.13,<5",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "ruff>=0.11,<1"]
 
 [project.scripts]
+ref = "ask_the_ref.cli:main"
 ref-sources = "ask_the_ref.download:main"
 
 [tool.setuptools.packages.find]
