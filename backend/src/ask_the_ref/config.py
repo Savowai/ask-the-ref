@@ -19,7 +19,9 @@ class Settings(BaseSettings):
         "postgresql://ref:ref_local_only@localhost:5432/ask_the_ref"
     )
     openai_api_key: SecretStr | None = None
-    llm_model: str = ""
+    llm_model: str = "gpt-4.1-mini-2025-04-14"
+    llm_timeout_seconds: float = Field(default=45, ge=1, le=120)
+    llm_max_output_tokens: int = Field(default=5000, ge=256, le=8000)
     embedding_model: str = ""
     embedding_dimensions: int = Field(default=384, ge=384, le=384)
     reranker_model: str = ""
@@ -60,7 +62,9 @@ class Source(BaseModel):
 
     @model_validator(mode="after")
     def validate_source(self):
-        for url in [self.source_url, self.discovery_url, self.download_url] + [c.url for c in self.corrections]:
+        for url in [self.source_url, self.discovery_url, self.download_url] + [
+            c.url for c in self.corrections
+        ]:
             if url is not None:
                 parsed = urlparse(url)
                 if (

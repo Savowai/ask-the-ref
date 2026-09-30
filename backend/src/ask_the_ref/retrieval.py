@@ -26,6 +26,7 @@ def connect():
 def migrate():
     with psycopg.connect(Settings().database_url.get_secret_value(), autocommit=True) as conn:
         conn.execute((ROOT / "db/migrations/002_local_retrieval.sql").read_text())
+        conn.execute((ROOT / "db/migrations/003_answer_logging.sql").read_text())
 
 
 def definition_links(chunks):
@@ -133,7 +134,7 @@ def rrf(*rankings, k=60):
 
 
 FIELDS = """id,section_key,parent_section_key,heading_path,body,section_url,source_url,
-            page_start,page_end,edition,rulebook,kind,blocks"""
+            page_start,page_end,edition,rulebook,rulebook_id,kind,blocks"""
 ELIGIBLE = "EXISTS (SELECT 1 FROM jsonb_array_elements(blocks) b WHERE b->>'type' IN ('paragraph','list_item','table'))"
 
 
@@ -142,7 +143,7 @@ class Search:
         self.embedder = Embedder()
         self.reranker = Reranker() if rerank else None
 
-    def ask(self, question, mode="hybrid-rerank", limit=5):
+    def ask(self, question, mode="hybrid-rerank", limit=5, *, log=True):
         if mode not in ("vector", "hybrid", "hybrid-rerank") or not 1 <= limit <= 20:
             raise ValueError("Invalid retrieval configuration")
         if not question.strip() or len(question) > 2000:
@@ -156,7 +157,7 @@ class Search:
         with connect() as conn:
             # Keep all stages on one snapshot if an ingestion commits during the request.
             conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-            books = conn.execute("""SELECT DISTINCT r.embedding_model,r.content_fingerprint
+            books = conn.execute("""SELECT DISTINCT r.id,r.edition,r.last_checked_at,r.embedding_model,r.content_fingerprint
                 FROM rulebooks r JOIN current_chunks c ON c.rulebook_id=r.id""").fetchall()
             if not books:
                 raise ValueError("No current rules ingested; run ref ingest first")
@@ -213,19 +214,29 @@ class Search:
             corpus = hashlib.sha256(
                 "|".join(sorted(b["content_fingerprint"] for b in books)).encode()
             ).hexdigest()
-            conn.execute(
-                """INSERT INTO query_runs(competition,retrieval_config,corpus_fingerprint,
-              model,cost_usd,latency_ms,refused,step_timings_ms) VALUES ('generic',%s,%s,%s,0,%s,false,%s)""",
-                (
-                    mode,
-                    corpus,
-                    model_id("embedding")
-                    + (" + " + model_id("reranker") if mode == "hybrid-rerank" else ""),
-                    elapsed,
-                    Jsonb(timings),
-                ),
-            )
+            if log:
+                conn.execute(
+                    """INSERT INTO query_runs(competition,retrieval_config,corpus_fingerprint,
+                  model,cost_usd,latency_ms,refused,step_timings_ms) VALUES ('generic',%s,%s,%s,0,%s,false,%s)""",
+                    (
+                        mode,
+                        corpus,
+                        model_id("embedding")
+                        + (" + " + model_id("reranker") if mode == "hybrid-rerank" else ""),
+                        elapsed,
+                        Jsonb(timings),
+                    ),
+                )
         return {
+            "corpus_fingerprint": corpus,
+            "sources": [
+                {
+                    "id": b["id"],
+                    "edition": b["edition"],
+                    "last_checked_at": b["last_checked_at"].isoformat(),
+                }
+                for b in books
+            ],
             "question": question,
             "mode": mode,
             "results": results,
@@ -233,5 +244,71 @@ class Search:
             "latency_ms": elapsed,
             "timings_ms": timings,
             "api_cost_usd": 0,
-            "notice": "Retrieved evidence only. Generated answers and refusal handling arrive in Phase 3.",
+            "notice": "Retrieved evidence only. Use ref ask for a validated generated answer.",
         }
+
+
+def corpus_is_current(fingerprint, chunk_ids=()):
+    with connect() as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        books = conn.execute("""SELECT DISTINCT r.id,r.content_fingerprint FROM rulebooks r
+            JOIN current_chunks c ON c.rulebook_id=r.id""").fetchall()
+        current = hashlib.sha256(
+            "|".join(sorted(b["content_fingerprint"] for b in books)).encode()
+        ).hexdigest()
+        count = conn.execute(
+            "SELECT count(*) n FROM current_chunks WHERE id=ANY(%s::uuid[])", (list(chunk_ids),)
+        ).fetchone()["n"]
+        return fingerprint == current and count == len(set(chunk_ids))
+
+
+def expand_ancestors(rows):
+    """Include full ancestor sections so subheadings retain conditions stated above them."""
+    output = []
+    seen = {(r["rulebook_id"], r["section_key"]) for r in rows}
+    frontier = rows
+    with connect() as conn:
+        for _ in range(5):
+            following = []
+            for row in frontier:
+                parent = row.get("parent_section_key")
+                key = (row["rulebook_id"], parent)
+                if not parent or key in seen:
+                    continue
+                seen.add(key)
+                found = conn.execute(
+                    f"""SELECT {FIELDS} FROM current_chunks
+                    WHERE rulebook_id=%s AND section_key=%s""",
+                    key,
+                ).fetchone()
+                if found:
+                    following.append(found)
+            output.extend(following)
+            frontier = following
+    return output
+
+
+def collect_evidence(search, queries):
+    from .evidence import EvidenceBundle, EvidenceError, package_evidence
+
+    responses = [search.ask(q, limit=5, log=False) for q in dict.fromkeys(queries)]
+    fingerprints = {r["corpus_fingerprint"] for r in responses}
+    if len(fingerprints) != 1:
+        raise EvidenceError("corpus_changed")
+    # Interleave subquestion results so offence, sanction and restart get equal room.
+    rows = []
+    for rank in range(5):
+        for response in responses:
+            if rank < len(response["results"]):
+                rows.append(response["results"][rank])
+    rows += expand_ancestors(rows)
+    evidence = package_evidence(rows)
+    fingerprint = responses[0]["corpus_fingerprint"]
+    if not corpus_is_current(fingerprint, [e["chunk_id"] for e in evidence]):
+        raise EvidenceError("corpus_changed")
+    return EvidenceBundle(
+        evidence,
+        fingerprint,
+        responses[0]["sources"],
+        {"retrieval": sum(r["latency_ms"] for r in responses)},
+    )

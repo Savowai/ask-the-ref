@@ -15,14 +15,14 @@ make corrections               # two official HTML replacements with pinned cont
 make models                    # local models; internet needed only for initial download
 make parse                     # inspect ignored data/processed/ifab.json
 make ingest                    # embed first, then replace IFAB in one transaction
-.venv/bin/ref ask 'Can you be offside directly from a throw-in?'
-.venv/bin/ref ask 'How long may a goalkeeper hold the ball?' --mode hybrid --json
+.venv/bin/ref search 'Can you be offside directly from a throw-in?'
+.venv/bin/ref search 'How long may a goalkeeper hold the ball?' --mode hybrid --json
 make test
 REF_TEST_DATABASE=1 .venv/bin/python -m pytest -q
 .venv/bin/python scripts/smoke_retrieval.py
 ```
 
-Run commands from the project root. `ref ask` prints complete retrieved excerpts,
+Run commands from the project root. `ref search` prints complete retrieved excerpts,
 heading paths, edition and source links. It deliberately labels output as retrieved
 evidence: there is no generated ruling or off-topic refusal until Phase 3.
 `--mode` supports `vector`, `hybrid`, and `hybrid-rerank` (default).

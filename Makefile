@@ -41,3 +41,9 @@ ingest:
 	$(VENV)/python -m ask_the_ref.cli ingest
 ask:
 	$(VENV)/python -m ask_the_ref.cli ask "$$QUESTION"
+
+.PHONY: search smoke-answers
+search:
+	$(VENV)/python -m ask_the_ref.cli search "$$QUESTION"
+smoke-answers:
+	$(VENV)/python scripts/smoke_answers.py

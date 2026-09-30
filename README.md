@@ -1,15 +1,18 @@
 # Ask the Ref
 
 Public, evidence-first Q&A about the football rules in force today.
-**Status: Phase 2 complete: IFAB section parsing, local hybrid retrieval and extractive CLI.**
-Generated answers are Phase 3; API/UI and deployment are later phases.
+**Status: Phase 3 implemented; live answer-generation validation awaits an API key.**
+IFAB parsing and local retrieval work. Generated-answer controls pass automated tests;
+real-model quality is not yet verified. API/UI and deployment are later phases.
+
+See [Phase 3 setup, citation checks and verification status](docs/PHASE3.md).
 
 See [Phase 2 setup, source corrections and measured retrieval checks](docs/PHASE2.md).
 
 ## Local setup
 
 Requirements: Python 3.12+ (3.13 tested), Docker Engine/Desktop with Compose v2,
-and Git. No API key is needed through Phase 2.
+and Git. No API key is needed for ingestion or `ref search`. `ref ask` needs OPENAI_API_KEY.
 
 ```sh
 make setup                         # creates .venv and .env if absent
@@ -37,11 +40,12 @@ migrations and run them explicitly; never delete a user's database to apply chan
 
 ```text
 apps/web/                    Next.js + TypeScript + Tailwind (Phase 6)
-backend/src/ask_the_ref/      typed config and official PDF downloader
+backend/src/ask_the_ref/      sources, parser, retrieval, answering and citation checks
   config.py
   download.py
 db/migrations/001_initial.sql
 scripts/check_db.sql         database readiness and index assertions
+scripts/smoke_answers.py     opt-in live answer diagnostic (requires API key)
 scripts/check_db_behavior.sql transactional schema integration checks
 tests/test_sources.py        source validity and download safety tests
 evals/                       golden set and comparisons (Phase 4)
@@ -74,7 +78,8 @@ expired books/provisions. Retrieval must use this view.
 `chunk_links`: definitions, cross-references and explicit competition variations.
 Variation links require supporting evidence; this is storage, not implemented precedence logic.
 `query_runs`: trace/config/corpus/model identifiers, token counts, latency, step timings,
-refusal flag and cost. Unknown cost is NULL; no raw user questions are stored by default.
+refusal flag and cost. Unknown cost/usage is NULL; no raw user questions are stored by default.
+Migration 003 adds generation outcome, pipeline version and diagnostics.
 
 Full-text GIN and cosine HNSW indexes support hybrid retrieval. Migration 002
 selects native 384-dimensional MiniLM embeddings. Changing model/dimensions requires
@@ -112,7 +117,8 @@ parser profiles and discovery resolvers will be added in their respective phases
 | POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB / POSTGRES_PORT | Phase 1 | Local Compose database |
 | DATABASE_URL | Phase 2 onward | Backend connection; keep aligned with Postgres settings |
 | OPENAI_API_KEY | Phase 3 if using OpenAI | Server-only answer-generation credentials |
-| LLM_MODEL | Phase 3 | Answer model selected during generation work |
+| LLM_MODEL | Phase 3 | Defaults to gpt-4.1-mini-2025-04-14; live evaluation pending |
+| LLM_TIMEOUT_SECONDS / LLM_MAX_OUTPUT_TOKENS | Phase 3 | 45 seconds / 5000 output tokens per call |
 | EMBEDDING_DIMENSIONS | Phase 2 | 384 after migration 002; models pinned in models.lock.json |
 | OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_SERVICE_NAME | Phase 6 | Optional tracing exporter |
 | NEXT_PUBLIC_API_URL | Phase 6 | Public backend URL; never put secrets in NEXT_PUBLIC variables |

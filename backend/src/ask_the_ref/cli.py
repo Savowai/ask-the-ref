@@ -1,4 +1,4 @@
-"""Phase 2 extractive Q&A: quote evidence without inventing a generated decision."""
+"""Current IFAB rules: cited answers (ask) and raw evidence (search)."""
 
 import argparse
 import json
@@ -26,7 +26,10 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ["models", "corrections", "parse", "migrate", "ingest"]:
         commands.add_parser(name)
-    ask = commands.add_parser("ask")
+    answer = commands.add_parser("ask")
+    answer.add_argument("question")
+    answer.add_argument("--json", action="store_true")
+    ask = commands.add_parser("search")
     ask.add_argument("question")
     ask.add_argument(
         "--mode", choices=["vector", "hybrid", "hybrid-rerank"], default="hybrid-rerank"
@@ -58,6 +61,34 @@ def main():
             else:
                 print(f"Parsed {len(chunks)} sections → data/processed/ifab.json")
         elif args.command == "ask":
+            from .answering import AnswerService
+
+            response = AnswerService().ask(args.question)
+            if args.json:
+                print(json.dumps(response, default=str, ensure_ascii=False, indent=2))
+            else:
+                print(response["markdown"])
+                if response["citations"]:
+                    print("\nSources and exact supporting text:")
+                    for citation in response["citations"]:
+                        print(
+                            f"\n[{citation['number']}] {' > '.join(citation['heading_path'])} ({citation['edition']})"
+                        )
+                        print(citation["url"])
+                        print(citation["quote"])
+                print("\n" + response["scope_note"])
+                for source in response["sources"]:
+                    print(
+                        f"Rules: {source['id']} {source['edition']}; checked {source['last_checked_at']}"
+                    )
+                cost = response["usage"]["api_cost_usd"]
+                print(
+                    f"\nStatus: {response['status']}; {response['latency_ms']} ms; API cost: "
+                    + (f"${cost:.6f}" if cost is not None else "unknown")
+                )
+            if response["status"] in ("configuration_error", "provider_error", "retrieval_error"):
+                raise SystemExit(2)
+        elif args.command == "search":
             from .retrieval import Search
 
             response = Search(rerank=args.mode == "hybrid-rerank").ask(
