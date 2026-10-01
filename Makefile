@@ -58,3 +58,13 @@ local-model:
 .PHONY: local-llm-cpu
 local-llm-cpu:
 	LLAMA_ARG_DEVICE=none LLAMA_ARG_KV_OFFLOAD=0 $(MAKE) local-llm
+
+.PHONY: web-corpus web-install web-dev web-build
+web-corpus:
+	$(VENV)/python scripts/export_web_corpus.py
+web-install:
+	cd apps/web && npm install
+web-dev:
+	cd apps/web && npm run dev
+web-build:
+	cd apps/web && npm run build

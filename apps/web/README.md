@@ -1,5 +1,16 @@
-# Web app (Phase 6)
+# Ask the Ref web
 
-Reserved for Next.js, TypeScript and Tailwind. Chat streaming, the citation panel,
-competition selector and Browse the Laws will be implemented in Phase 6.
-No placeholder answers or simulated citations are shipped in Phase 1.
+Next.js public interface for the current rules corpus. The deployed app uses deterministic
+section search and exact source excerpts, so it has no model API key or per-query inference cost.
+The local Python CLI adds Ollama-based synthesis when desired.
+
+```sh
+npm install
+npm run dev
+```
+
+Regenerate the checked-in deployment corpus after ingestion:
+
+```sh
+python ../../scripts/export_web_corpus.py
+```

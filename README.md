@@ -2,7 +2,8 @@
 
 Public, evidence-first Q&A about the football rules in force today.
 **Status: Phase 3 uses a free local model and the IFAB corpus. No API key required.**
-The paid provider has been removed. API/UI and deployment remain later phases.
+The public Next.js interface uses deterministic corpus search with exact excerpts, so its
+Vercel deployment also has no model key or per-query inference cost.
 
 See [Phase 3 setup, citation checks and verification status](docs/PHASE3.md).
 
@@ -31,6 +32,18 @@ Docker-only downloads: `docker compose --profile tools run --rm tools python -m 
 `make db-down` stops containers without deleting `data/postgres`.
 The database is bound to loopback only. The example password is for local development.
 
+Run the public web interface:
+
+```sh
+cd apps/web
+npm install
+npm run dev
+```
+
+The web app ships the derived current IFAB section corpus, not the source PDF. Regenerate it
+after ingestion with `python scripts/export_web_corpus.py`. Local Ollama synthesis stays in the
+Python CLI because the pinned 4.7 GB model cannot run inside a Vercel function.
+
 The initial migration runs automatically on an **empty** Postgres data directory.
 Editing it does not migrate an existing database. Subsequent phases must add numbered
 migrations and run them explicitly; never delete a user's database to apply changes.
@@ -38,7 +51,7 @@ migrations and run them explicitly; never delete a user's database to apply chan
 ## Folder structure
 
 ```text
-apps/web/                    Next.js + TypeScript + Tailwind (Phase 6)
+apps/web/                    Next.js public corpus search and citations
 backend/src/ask_the_ref/      sources, parser, retrieval, answering and citation checks
   config.py
   download.py

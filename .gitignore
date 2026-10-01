@@ -12,6 +12,7 @@ __pycache__/
 htmlcov/
 *.egg-info/
 .next/
+*.tsbuildinfo
 out/
 dist/
 build/
