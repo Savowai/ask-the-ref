@@ -18,10 +18,9 @@ class Settings(BaseSettings):
     database_url: SecretStr = SecretStr(
         "postgresql://ref:ref_local_only@localhost:5432/ask_the_ref"
     )
-    openai_api_key: SecretStr | None = None
-    llm_model: str = "gpt-4.1-mini-2025-04-14"
-    llm_timeout_seconds: float = Field(default=45, ge=1, le=120)
-    llm_max_output_tokens: int = Field(default=5000, ge=256, le=8000)
+    llm_num_gpu: int = Field(default=-1, ge=-1)
+    llm_timeout_seconds: float = Field(default=180, ge=1, le=600)
+    llm_max_output_tokens: int = Field(default=3000, ge=256, le=5000)
     embedding_model: str = ""
     embedding_dimensions: int = Field(default=384, ge=384, le=384)
     reranker_model: str = ""

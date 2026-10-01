@@ -302,7 +302,7 @@ def collect_evidence(search, queries):
             if rank < len(response["results"]):
                 rows.append(response["results"][rank])
     rows += expand_ancestors(rows)
-    evidence = package_evidence(rows)
+    evidence = package_evidence(rows, character_budget=12000)
     fingerprint = responses[0]["corpus_fingerprint"]
     if not corpus_is_current(fingerprint, [e["chunk_id"] for e in evidence]):
         raise EvidenceError("corpus_changed")

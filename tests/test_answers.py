@@ -182,13 +182,9 @@ def test_provider_failure_never_exposes_error_contents():
     assert "SECRET" not in str(result)
 
 
-def test_missing_key_is_honest_and_does_not_fake_generation():
-    result = AnswerService(settings=Settings(openai_api_key=None), logger=lambda *args: None).ask(
-        "Any rule?"
-    )
-    assert result["status"] == "configuration_error"
-    assert result["provider_calls"] == 0
-    assert result["usage"]["api_cost_usd"] == 0
+def test_no_api_key_or_cloud_model_setting_exists():
+    assert "openai_api_key" not in Settings.model_fields
+    assert "llm_model" not in Settings.model_fields
 
 
 def test_evidence_budget_does_not_cut_exceptions_or_duplicate_sections():

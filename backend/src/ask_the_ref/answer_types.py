@@ -57,7 +57,7 @@ MESSAGES = {
     "insufficient_evidence": "I could not verify an answer from the current rule sections retrieved. Please add more detail or check the official rulebook.",
     "validation_failed": "I could not verify the answer against the retrieved rules, so I am withholding it.",
     "corpus_changed": "The rule corpus changed while this answer was being prepared. Please ask again.",
-    "provider_error": "The answer service is unavailable. Please try again later.",
-    "configuration_error": "Answer generation needs OPENAI_API_KEY in the project .env. Retrieval remains available with ref search.",
+    "provider_error": "The local answer model is unavailable or could not produce a verified response. Start it with make local-llm; raw evidence remains available with ref search.",
+    "configuration_error": "Local answer generation needs make local-llm and make local-model. No API key is required.",
     "retrieval_error": "The current rules could not be retrieved. Check the database and local model setup.",
 }

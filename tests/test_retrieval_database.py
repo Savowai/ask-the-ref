@@ -119,7 +119,7 @@ def test_real_corpus_generated_flow_with_scripted_provider():
         assert row["model"] == "scripted-provider-test"
         assert row["cost_usd"] == 0
         assert row["diagnostics"]["provider_calls"] == 3
-        assert row["pipeline_version"] == "phase3-v1"
+        assert row["pipeline_version"] == "phase3-local-v1"
         assert not retrieval.corpus_is_current(
             "wrong-fingerprint", [result["citations"][0]["chunk_id"]]
         )

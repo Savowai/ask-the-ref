@@ -1,6 +1,6 @@
-"""Opt-in live Phase 3 diagnostic. Sends 8 fixed public rules questions to OpenAI.
+"""Local Phase 3 diagnostic: eight questions against the corpus and local model.
 
-Run only when OPENAI_API_KEY is configured. No live accuracy is inferred from mocks.
+Requires make local-llm and make local-model. No API key or paid service.
 """
 
 import json
@@ -48,10 +48,6 @@ CASES = [
 
 def main():
     settings = Settings()
-    if not settings.openai_api_key or not settings.openai_api_key.get_secret_value().strip():
-        raise SystemExit(
-            "Live checks not run: add OPENAI_API_KEY to .env. Do not paste it into chat."
-        )
     service = AnswerService(settings)
     rows = []
     for case, question, statuses, expected_sections in CASES:

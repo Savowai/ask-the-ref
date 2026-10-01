@@ -15,7 +15,7 @@ from . import prompts
 from .answer_types import MESSAGES, AnswerAudit, DraftAnswer, QuestionPlan
 from .config import Settings
 from .evidence import EvidenceError, check_audit, check_draft, render_answer
-from .llm import ProviderError, ResponsesClient
+from .llm import LOCAL_MODEL, LocalClient, ProviderError
 
 
 class CorpusChanged(Exception):
@@ -121,11 +121,11 @@ class AnswerService:
         }
         client = self.client
         usage_start = len(client.usages) if client else 0
-        model = self.settings.llm_model.strip() or "gpt-4.1-mini-2025-04-14"
+        model = LOCAL_MODEL
         stage = "configuration"
         try:
             if client is None:
-                client = ResponsesClient(self.settings)
+                client = LocalClient(self.settings)
             model = client.model
 
             def call(instructions, payload, schema, name):

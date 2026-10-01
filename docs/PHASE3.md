@@ -1,124 +1,96 @@
-# Phase 3: cited answers
+# Phase 3: free local answers from the corpus
 
-Implemented on 2026-09-29. **Live model validation is pending an API key.**
-66 automated tests pass, including the real IFAB database with a scripted provider.
-Scripted responses establish control behavior, not real-model answer accuracy.
-The existing 12-question retrieval diagnostic still returns 12/12 relevant-section
-hits at five with reranking. The independent 75+ question evaluation remains Phase 4.
+**No API key, paid model endpoint, subscription or per-query API bill is required.**
+The corpus is the source of truth. Local retrieval selects its rule sections; a local
+model rewrites that evidence into an answer. The paid provider has been removed.
+Generation, query rewriting and the support audit all run through Ollama on this Mac.
 
-## Setup and commands
+## Run
 
-From the project directory, retain the Phase 2 database and downloaded models:
+Ollama is already installed on this development machine. Keep the existing Phase 2
+Postgres service, corpus and embedding/reranking models. From the project directory:
 
 ```sh
+make db-up
 make db-migrate
-# Edit .env locally: set OPENAI_API_KEY. Never put the key in chat or version control.
+make local-llm             # keep running in one terminal; localhost port 11436
+# In a second terminal:
+make local-model           # one-time ~4.7 GB model download
 .venv/bin/ref ask 'Can you be offside directly from a throw-in?'
 .venv/bin/ref ask 'A player recklessly trips an opponent outside the penalty area. What happens?' --json
-# Raw, fully local evidence retrieval remains available without a key:
-.venv/bin/ref search 'What counts as handball?' --mode hybrid-rerank
-REF_TEST_DATABASE=1 .venv/bin/python -m pytest -q
-make lint
-# Opt-in live diagnostic: eight fixed questions, with paid API calls.
+.venv/bin/ref search 'What counts as handball?'  # raw local evidence, no generator needed
 make smoke-answers
 ```
 
-`ref ask` now generates validated answers; the Phase 2 extractive command moved to
-`ref search`. `make ask QUESTION='...'` and `make search QUESTION='...'` are also supported.
-Without a key, `ask` reports configuration_error and exits with code 2; it never
-presents canned text as a live model answer. Authentication/network/retrieval failures
-also exit with code 2. Refusals, clarification and evidence abstentions are normal
-structured results, identified by their `status`.
+The native Ollama runtime uses Apple GPU acceleration when available. For an environment
+where GPU access is unavailable, start `make local-llm-cpu` instead, and set `LLM_NUM_GPU=0`
+in `.env`. This explicitly disables device and KV offloading as well as model offloading.
+CPU-only answers are slower. Stop the foreground server with Ctrl+C when finished.
 
-The default is the pinned `gpt-4.1-mini-2025-04-14` model, configurable with `LLM_MODEL`.
-This is an initial, unevaluated choice, not a claim that it is the best model for
-refereeing. The adapter uses the Responses API with strict JSON Schema, `store:false`,
-no tools and no automatic retries. Keys go only to the fixed OpenAI API endpoint;
-redirects are rejected. Defaults bound each call to 45 seconds and 5,000 output tokens.
-A supported answer makes three calls; a question classified off-topic makes one.
+`make local-llm` stores models under ignored `work/ollama/models`, uses project-local
+temporary files, binds only to localhost, and sets `OLLAMA_NO_CLOUD=1`. The application
+calls only `http://127.0.0.1:11436`; redirects and environment proxies are disabled.
+There is no paid/cloud fallback. Old API-key or model settings in `.env` are ignored.
+No API key should be added or purchased for this project.
 
-Official implementation references:
-- [Structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [Model snapshot, capabilities and pricing](https://developers.openai.com/api/docs/models/gpt-4.1-mini)
+The selected model is Qwen2.5 7B, pinned by the downloaded manifest digest in
+`local-model.lock.json`. The adapter checks that digest before inference and refuses a
+changed/missing model. Internet is needed for the initial model/rulebook downloads and
+future rule checks, not for question answering against an installed corpus.
 
-## Answer pipeline
+References: [Ollama structured output](https://docs.ollama.com/capabilities/structured-outputs),
+[local-only mode and storage](https://docs.ollama.com/faq),
+[Qwen2.5 7B model](https://ollama.com/library/qwen2.5:7b).
 
-1. **Understand.** A structured classifier detects scope and competition, expands
-   soccer slang, identifies scenarios and produces up to six short retrieval queries.
-   Scenarios request evidence for the offence, restart and sanction; multipart questions
-   get separate queries. Historical requests, unrelated questions and missing decisive
-   facts receive distinct outcomes.
-2. **Retrieve.** Hybrid search and reranking run for each query. Results are interleaved
-   so the first subquestion cannot consume the entire context. Full parent sections are
-   added to retain conditions stated above a subsection. Subsections and their parents
-   fit the context budget together or are omitted together. Up to 32 whole sections and
-   100,000 characters are included; sections are never cut through an exception.
-3. **Generate.** The model receives only current retrieved text as rule evidence.
-   A direct answer uses an Answer section. Scenarios must contain exactly Decision →
-   Restart → Disciplinary sanction → Why. Each claim requires evidence IDs and exact
-   supporting quotations. Referee judgments are conditional and explicitly labeled.
-4. **Check citations.** Unknown IDs, non-verbatim quotations, empty/uncited claims,
-   model-written citation markup and incomplete scenario formats are rejected locally.
-   Links come from stored source metadata, never model-generated URLs.
-5. **Audit support.** A separate model call checks every claim against its quoted text,
-   full sections, user facts, exceptions and all parts of the question. Missing, duplicate
-   or negative audit decisions withhold the entire draft. This uses the same model in a
-   separate call; it is not an independent proof and can share the generator's mistakes.
-6. **Recheck freshness and render.** All retrieval passes must share the corpus
-   fingerprint. Before exposing an answer, cited evidence IDs must still exist in
-   `current_chunks` and the fingerprint must still match. A concurrent replacement
-   causes abstention. The renderer adds inline numbered links and quote spans.
+## Accuracy controls
 
-No draft tokens are exposed before validation. Phase 6 can stream progress and then
-validated content; public API/UI streaming is not part of this phase.
+1. A structured local-model call detects topic, competition, slang, multipart questions
+   and scenarios, producing up to six short retrieval queries.
+2. Hybrid retrieval and reranking select current evidence for each query. Results are
+   interleaved. A subsection and its ancestor conditions fit the context budget together
+   or are omitted together. Whole sections are retained; no exception is cut off mid-text.
+3. Generation uses only supplied evidence. Every claim needs exact quotations and source
+   IDs. Scenarios use Decision → Restart → Disciplinary sanction → Why. Referee judgments
+   are conditional and labeled. No draft text is exposed yet.
+4. Local validators reject fabricated quotes, unknown citations, missing support and
+   incomplete scenario formats. A separate local-model call checks semantic support,
+   exceptions, assumptions and coverage of all question parts. A failed check withholds
+   the entire answer. The generator and auditor share a model: this is not proof of
+   correctness, and Phase 4 must measure their failures.
+5. Current corpus fingerprints and evidence IDs are rechecked before rendering numbered
+   inline links. Concurrent replacement causes abstention rather than stale citations.
 
-## Citation payload and limits
+The context includes at most 32 sections and 12,000 body characters, plus metadata and
+prompts. The runtime context is explicitly 32,768 tokens; a conservative UTF-8 byte upper
+bound rejects a request that might exceed it, reserving output and template overhead.
+Oversized requests fail closed instead of silently dropping instructions or exceptions.
+The default per-call timeout is 180 seconds and output limit is 3,000 tokens.
 
-JSON results contain the outcome, formatted answer sections, Markdown, and citations.
-Each citation contains its number, evidence/chunk/section IDs, heading path, edition,
-official URL, page range, full source body, verbatim quote, and start/end offsets.
-Offsets index Unicode code points in the body, making highlighting reproducible.
-HTML amendments retain their exact web anchors and NULL PDF page fields.
-The UI citation panel itself is Phase 6 work.
+JSON citations carry full section text, quote offsets, official URLs, section heading
+paths, editions, page ranges and IDs for the Phase 6 highlighting panel. Offsets are
+Unicode code points. Official HTML amendments retain exact anchors and NULL PDF pages.
+Missing evidence, unclear incidents and off-topic requests have distinct outcomes.
+PL/UEFA/FIFA-specific questions remain explicitly unavailable until Phase 5 ingestion.
+The website and streaming API are Phase 6 work.
 
-Competition context is detected now, but PL/UEFA/FIFA-specific answers deliberately
-return `scope_unavailable` until Phase 5 ingests those regulations and implements
-precedence. Generic answers state their IFAB-only scope. Optional IFAB protocols must
-not be described as universally adopted. This is not yet a competition-aware product.
+## Cost and hosting
 
-When retrieved evidence is insufficient, the app says it could not verify an answer;
-it does not claim that the complete rulebook contains no rule. Judgment calls and
-missing facts are distinct from off-topic refusals. Neither exact-quote checking nor
-an LLM support audit guarantees factual correctness. Phase 4 must measure actual
-correctness, citation support, omissions, and refusal accuracy before public claims.
+The local corpus, embeddings, reranker and answer model incur **zero paid API charges**.
+Telemetry records zero API cost even when a local request fails; unknown token counts
+remain NULL. Hardware, electricity, storage and internet access are not included in
+that API-cost figure. Raw questions, drafts and error bodies are not stored in database
+telemetry. A trace ID, model, corpus fingerprint, stage times and outcome are logged.
 
-## Telemetry
+A public website still needs somewhere to run the database and inference. A free demo
+can use already-owned hardware or suitable free hosting, subject to uptime and resource
+limits. This phase does not promise unlimited public traffic at no infrastructure cost,
+and no paid hosting will be provisioned without agreeing a deployment plan.
 
-Migration 003 extends `query_runs` with outcome, pipeline version and diagnostics.
-It allows NULL token counts for failed calls whose usage is unknown. One generated
-answer run logs its aggregate understanding/generation/audit usage, stage times, corpus
-fingerprint, trace ID, model and API cost. Retrieval subqueries do not create duplicate
-paid-query rows. Raw user questions, answer drafts and provider error bodies are not
-persisted in database telemetry.
+## Verification
 
-The known default model's standard input/cached-input/output prices are $0.40/$0.10/
-$1.60 per million tokens, checked on 2026-09-29 at the official model page above.
-Costs are estimates from returned token usage at that recorded rate; hardware and
-special service-tier surcharges are not included. Unknown model pricing, missing
-usage or network failures produce NULL cost, never a fictional zero. Calls completed
-before a later validation failure still count toward the run cost. Model load time
-is included in end-to-end answer latency when the service is cold.
-
-## Verification status
-
-Passed: 66 tests; lint; real database retrieval/answer transport with a scripted model;
-existing retrieval smoke (vector 10/12, hybrid 9/12, hybrid + rerank 12/12). Tests cover
-quotation tampering, missing citations, incomplete formats, semantic-audit rejection,
-refusals, unavailable competition scope, corpus changes, API errors/refusals/incomplete
-outputs, secret-safe errors and cached-token cost arithmetic.
-
-**Not run:** live Responses API generation, live semantic/refusal quality, and account
-model access. `make smoke-answers` currently exits with an explicit missing-key message.
-Once configured, it writes ignored `work/answer-smoke.json`; inspect the full answers,
-not just status/section-hit checks. That small diagnostic is not the Phase 4 golden set.
-No public deployment or UI was added. Phase 3 awaits the live check before its final gate.
+Run `REF_TEST_DATABASE=1 .venv/bin/python -m pytest -q` and `make lint` for controls and
+real-database integration. Tests verify that no credentials leave the app, requests stay
+on the fixed local endpoint, context overflow and changed models fail closed, and invalid
+citations/audit failures are withheld. Scripted-provider tests are not model accuracy tests.
+`make smoke-answers` exercises the real local model against eight fixed questions and
+writes ignored `work/answer-smoke.json`; it is a diagnostic, not the Phase 4 golden set.

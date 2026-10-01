@@ -47,3 +47,14 @@ search:
 	$(VENV)/python -m ask_the_ref.cli search "$$QUESTION"
 smoke-answers:
 	$(VENV)/python scripts/smoke_answers.py
+
+.PHONY: local-llm local-model
+local-llm:
+	mkdir -p work/ollama/models work/tmp
+	OLLAMA_HOST=127.0.0.1:11436 OLLAMA_MODELS="$(CURDIR)/work/ollama/models" OLLAMA_NO_CLOUD=1 OLLAMA_NUM_PARALLEL=1 TMPDIR="$(CURDIR)/work/tmp" ollama serve
+local-model:
+	OLLAMA_HOST=127.0.0.1:11436 ollama pull qwen2.5:7b
+
+.PHONY: local-llm-cpu
+local-llm-cpu:
+	LLAMA_ARG_DEVICE=none LLAMA_ARG_KV_OFFLOAD=0 $(MAKE) local-llm
