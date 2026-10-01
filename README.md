@@ -1,9 +1,30 @@
 # Ask the Ref
 
-Public, evidence-first Q&A about the football rules in force today.
-**Status: Phase 3 uses a free local model and the IFAB corpus. No API key required.**
-The public Next.js interface uses deterministic corpus search with exact excerpts, so its
-Vercel deployment also has no model key or per-query inference cost.
+Evidence-first search over the current IFAB Laws of the Game. Describe a situation in plain
+English and get the relevant sections, the exact quoted rule text, page-level citations and a
+link to the official source.
+
+**Live:** https://ask-the-ref-liart.vercel.app/
+
+## How it works
+
+- **Corpus.** The 2026/27 IFAB Laws PDF is parsed into 348 structure-aware sections (all 17 Laws,
+  VAR protocol, practical guidance, glossary, official amendments). Each chunk keeps its heading
+  path, numbered lists, definitions, edition and PDF page range.
+- **Ingestion.** Sources are pinned in `sources.yaml` (official hosts, SHA-256). Re-ingestion runs in
+  one transaction under a per-book lock, so a failed update never leaves a half-replaced rulebook.
+- **Retrieval (RAG).** PostgreSQL 17 + pgvector: full-text search plus 384-dimensional MiniLM
+  embeddings, fused and reranked with a cross-encoder. Query expansion maps football slang
+  ("handball", "second yellow", "DOGSO", "back-pass", "offside trap") to rule language, and
+  off-topic questions are refused.
+- **Answers.** Locally, Ollama generates an answer that must cite retrieved sections; citations are
+  validated and the pipeline fails closed if they don't check out.
+- **Public app.** The Vercel deployment (Next.js, TypeScript) uses deterministic corpus search that
+  quotes the rule text directly. No model API key and no per-query cost, and nothing is generated that
+  the rulebook doesn't say.
+
+**Stack:** Python, PostgreSQL, pgvector, Docker, Ollama, Next.js, TypeScript, Vercel.
+**Planned:** FIFA, UEFA and Premier League regulations.
 
 See [Phase 3 setup, citation checks and verification status](docs/PHASE3.md).
 
