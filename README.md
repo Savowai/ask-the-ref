@@ -4,7 +4,7 @@ Evidence-first search over the current IFAB Laws of the Game. Describe a situati
 English and get the relevant sections, the exact quoted rule text, page-level citations and a
 link to the official source.
 
-**Live:** https://ask-the-ref-liart.vercel.app/
+**Live:** https://xrasktheref.vercel.app/
 
 ## How it works
 
